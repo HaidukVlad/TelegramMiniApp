@@ -1,6 +1,10 @@
 from flask import Flask, render_template, request, jsonify
 import secrets
 from collections import defaultdict
+from flask_cors import CORS
+
+app = Flask(__name__, template_folder='.')
+CORS(app)
 
 app = Flask(__name__, template_folder='.')
 app.secret_key = 'your-secret-key'
@@ -17,10 +21,20 @@ def web():
 
 @app.route('/create_session', methods=['POST'])
 def create_session():
-    session_id = secrets.token_urlsafe(8)
-    user_id = request.json.get('user_id')
-    sessions[session_id] = {'users': [user_id], 'lists': {}}
-    return jsonify({'session_id': session_id})
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id', 'unknown')
+        print(f"Creating session for user: {user_id}")
+
+        session_id = secrets.token_urlsafe(8)
+        sessions[session_id] = {'users': [user_id], 'lists': []}
+
+        print(f"Session created: {session_id}")
+        return jsonify({'session_id': session_id})
+
+    except Exception as e:
+        print(f"Error in create_session: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @app.route('/join_session', methods=['POST'])

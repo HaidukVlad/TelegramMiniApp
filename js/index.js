@@ -1,5 +1,10 @@
 const tg = window.Telegram.WebApp;
+if (!tg) {
+    alert('Telegram WebApp not initialized!');
+    throw new Error('Telegram WebApp not initialized');
+}
 tg.expand();
+tg.ready();
 
 let currentSessionId = null;
 let lists = [];
@@ -23,21 +28,65 @@ joinBtn.addEventListener('click', joinExistingSession);
 shareBtn.addEventListener('click', shareSession);
 addBtn.addEventListener('click', addNewItem);
 
-function createNewSession() {
-    fetch('/create_session', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            user_id: tg.initDataUnsafe.user?.id
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
+async function createNewSession() {
+    try {
+        const response = await fetch('/create_session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: tg.initDataUnsafe.user?.id || 'default_user'
+            })
+        });
+
+        if (!response.ok) throw new Error('Network error');
+
+        const data = await response.json();
         currentSessionId = data.session_id;
         setupSessionView();
-    });
+        tg.showAlert(`Session created: ${currentSessionId}`);
+    } catch (error) {
+        console.error('Create session error:', error);
+        tg.showAlert('Failed to create session');
+    }
+}
+
+async function joinExistingSession() {
+    const sessionId = sessionIdInput.value.trim();
+    if (!sessionId) {
+        tg.showAlert('Please enter session ID');
+        return;
+    }
+
+    try {
+        const response = await fetch('/join_session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: sessionId,
+                user_id: tg.initDataUnsafe.user?.id || 'default_user'
+            })
+        });
+
+        if (!response.ok) throw new Error('Network error');
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            currentSessionId = sessionId;
+            lists = data.lists || [];
+            setupSessionView();
+            renderLists();
+            tg.showAlert('Successfully joined session');
+        } else {
+            tg.showAlert(data.message || 'Session not found');
+        }
+    } catch (error) {
+        console.error('Join session error:', error);
+        tg.showAlert('Failed to join session');
+    }
 }
 
 function joinExistingSession() {
@@ -75,29 +124,41 @@ function setupSessionView() {
 }
 
 function shareSession() {
-    const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=${currentSessionId}`;
+    const shareUrl = `https://t.me/WhatToWatchTogether_bot?startapp=${currentSessionId}`;
     tg.shareUrl(shareUrl);
 }
 
-function addNewItem() {
+async function addNewItem() {
     const item = newItemInput.value.trim();
-    if (!item) return;
+    if (!item) {
+        tg.showAlert('Please enter item text');
+        return;
+    }
 
-    lists.push(item);
-    newItemInput.value = '';
+    try {
+        lists.push(item);
+        newItemInput.value = '';
+        renderLists();
 
-    fetch('/update_list', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            session_id: currentSessionId,
-            list: lists
-        })
-    });
+        const response = await fetch('/update_list', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: currentSessionId,
+                list: lists
+            })
+        });
 
-    renderLists();
+        if (!response.ok) throw new Error('Update failed');
+
+    } catch (error) {
+        console.error('Add item error:', error);
+        tg.showAlert('Failed to save item');
+        lists.pop(); // Откатываем изменение при ошибке
+        renderLists();
+    }
 }
 
 function renderLists() {
