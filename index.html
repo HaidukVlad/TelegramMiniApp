@@ -3,14 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
     <link rel="stylesheet" href="css/style.css">
-    <title>Document</title>
+    <title>Watch Together</title>
+    <style>
+        body {
+            color: var(--tg-theme-text-color);
+            background: var(--tg-theme-bg-color);
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div class="main outter-container">
         <h1>Let's watch together!</h1>
+
+        <div id="create_session" class="section">
+            <button id="create_btn">Create new session</button>
+        </div>
+
+        <div id="join_session" class="section hidden">
+            <input type="text" id="session_id_input" placeholder="Enter session ID">
+            <button id="join_btn">Join session</button>
+        </div>
+
+        <div id="session_view" class="section hidden">
+            <p>Session ID: <span id="current_session_id"></span></p>
+            <button id="share_btn">Share session link</button>
+            <div id="lists_container"></div>
+            <input type="text" id="new_item" placeholder="Add new item">
+            <button id="add_btn">Add</button>
+        </div>
     </div>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="./js/index.js"></script>
 </body>
 </html>
