@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderLists();
       await loadUserSessions();
 
-      tg.showAlert(`Сессия создана: ${sessionId}`);
+      //tg.showAlert(`Сессия создана: ${sessionId}`);
     } catch (e) {
       console.error('Ошибка создания сессии', e);
       tg.showAlert(`Ошибка создания: ${e.message}`);
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function joinExistingSession(sessionId = elements.sessionIdInput.value.trim()) {
     if (!sessionId) {
-      tg.showAlert('Введите ID сессии');
+      //tg.showAlert('Введите ID сессии');
       return;
     }
 
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showSessionView();
       renderLists();
 
-      tg.showAlert('Успешно присоединились к сессии');
+      //tg.showAlert('Успешно присоединились к сессии');
     } catch (e) {
       console.error('Ошибка присоединения к сессии', e);
       tg.showAlert(`Ошибка: ${e.message}`);
@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       await loadUserSessions();
       showMainMenu();
-      tg.showAlert('Сессия удалена');
+      //tg.showAlert('Сессия удалена');
     } catch (e) {
       console.error('Ошибка удаления сессии', e);
       tg.showAlert(`Ошибка: ${e.message}`);
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function addNewItem() {
     const item = elements.newItemInput.value.trim();
     if (!item) {
-      tg.showAlert('Введите текст элемента');
+      //tg.showAlert('Введите текст элемента');
       return;
     }
     if (!currentSessionId) return;
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
   elements.copyBtn.onclick = () => {
     if (!currentSessionId) return;
     navigator.clipboard.writeText(currentSessionId);
-    tg.showAlert('ID сессии скопирован!');
+    //tg.showAlert('ID сессии скопирован!');
   };
   elements.addBtn.onclick = addNewItem;
 
