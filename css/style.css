@@ -64,7 +64,6 @@ body {
 .btn-primary {
     background: var(--primary-color);
     color: var(--tg-theme-button-text-color, #ffffff);
-
 }
 
 .btn-primary:hover {
