@@ -61,5 +61,25 @@ def join_session():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+@app.route('/get_session_info', methods=['GET'])
+def get_session_info():
+    try:
+        session_id = request.args.get('session_id')
+        if not session_id:
+            raise ValueError("No session_id provided")
+        logger.info(f"Fetching info for session: {session_id}")
+
+        if session_id in sessions:
+            return jsonify({
+                'status': 'success',
+                'users': sessions[session_id]['users']
+            })
+        logger.error(f"Session not found: {session_id}")
+        return jsonify({'status': 'error', 'message': 'Session not found'}), 404
+    except Exception as e:
+        logger.error(f"Error in get_session_info: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

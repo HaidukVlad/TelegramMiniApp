@@ -126,14 +126,26 @@ body {
 
 .list-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
     padding: 0.75rem;
     border-bottom: 1px solid #eee;
     background: var(--bg-color);
     border-radius: 4px;
     margin-bottom: 0.5rem;
     word-break: break-word;
+}
+
+.list-item .session-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.list-item .users-list {
+    font-size: 0.8rem;
+    color: var(--text-color);
+    opacity: 0.7;
 }
 
 .list-item span {

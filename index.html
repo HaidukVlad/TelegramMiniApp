@@ -11,8 +11,9 @@
     <div class="container">
         <h1 class="title">Смотрим вместе!</h1>
 
-        <div id="main_menu" class="section"> <!-- Совпадает с elements.mainMenu -->
-            <button id="create_btn" class="btn btn-primary">Создать комнату</button> <!-- Совпадает с elements.createBtn -->
+        <div id="main_menu" class="section">
+            <input type="text" id="session_name_input" class="input" placeholder="Название сессии (необязательно)">
+            <button id="create_btn" class="btn btn-primary">Создать комнату</button>
             <button id="join_btn" class="btn btn-primary">Присоединиться</button>
             <button id="list_btn" class="btn btn-primary">Список сессий</button>
         </div>
@@ -23,6 +24,7 @@
         </div>
         <div id="session_list" class="section hidden">
             <div id="sessions_container" class="lists-container"></div>
+            <button id="clear_sessions_btn" class="btn btn-secondary">Очистить все сессии</button>
             <button id="list_back_btn" class="btn btn-secondary">Назад</button>
         </div>
         <div id="session_view" class="section hidden">
@@ -31,7 +33,6 @@
                 <span>ID сессии: </span><span id="current_session_id" class="session-id"></span>
                 <button id="copy_btn" class="btn btn-secondary btn-small">Копировать</button>
             </div>
-            <button id="share_btn" class="btn btn-secondary">Поделиться ссылкой</button>
             <div id="lists_container" class="lists-container"></div>
             <div class="input-group">
                 <input type="text" id="new_item" class="input" placeholder="Добавить элемент">

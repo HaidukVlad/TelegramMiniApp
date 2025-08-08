@@ -30,12 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionBackBtn: document.getElementById('session_back_btn'),
         sessionIdInput: document.getElementById('session_id_input'),
         currentSessionIdSpan: document.getElementById('current_session_id'),
-        shareBtn: document.getElementById('share_btn'),
         copyBtn: document.getElementById('copy_btn'),
         listsContainer: document.getElementById('lists_container'),
         sessionsContainer: document.getElementById('sessions_container'),
         newItemInput: document.getElementById('new_item'),
-        addBtn: document.getElementById('add_btn')
+        addBtn: document.getElementById('add_btn'),
+        sessionNameInput: document.getElementById('session_name_input'),
+        clearSessionsBtn: document.getElementById('clear_sessions_btn')
     };
 
     // Проверка наличия всех элементов
@@ -54,9 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.backBtn.addEventListener('click', showMainMenu);
     elements.listBackBtn.addEventListener('click', showMainMenu);
     elements.sessionBackBtn.addEventListener('click', showMainMenu);
-    elements.shareBtn.addEventListener('click', shareSession);
     elements.copyBtn.addEventListener('click', copySessionId);
     elements.addBtn.addEventListener('click', addNewItem);
+    elements.clearSessionsBtn.addEventListener('click', clearSessions);
 
     function showMainMenu() {
         elements.mainMenu.classList.remove('hidden');
@@ -72,15 +73,16 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.sessionView.classList.add('hidden');
     }
 
-    function showSessionList() {
+    async function showSessionList() {
         elements.mainMenu.classList.add('hidden');
         elements.joinSection.classList.add('hidden');
         elements.sessionList.classList.remove('hidden');
         elements.sessionView.classList.add('hidden');
-        renderSessions();
+        await renderSessions();
     }
 
     async function createNewSession() {
+        const sessionName = elements.sessionNameInput.value.trim() || `Сессия ${new Date().toLocaleDateString('ru-RU')}`;
         elements.createBtn.disabled = true;
         elements.createBtn.textContent = 'Создание...';
         try {
@@ -99,10 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.status === 'success') {
                 currentSessionId = data.session_id;
-                sessions[currentSessionId] = { lists: [] };
+                sessions[currentSessionId] = { name: sessionName, lists: [] };
                 localStorage.setItem('sessions', JSON.stringify(sessions));
                 localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
                 lists = sessions[currentSessionId].lists;
+                elements.sessionNameInput.value = '';
                 setupSessionView();
                 tg.showAlert(`Сессия создана: ${currentSessionId}`);
             } else {
@@ -143,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.status === 'success') {
                 currentSessionId = sessionId;
                 if (!sessions[currentSessionId]) {
-                    sessions[currentSessionId] = { lists: [] };
+                    sessions[currentSessionId] = { name: `Сессия ${sessionId}`, lists: [] };
                 }
                 localStorage.setItem('sessions', JSON.stringify(sessions));
                 localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
@@ -174,11 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.sessionList.classList.add('hidden');
         elements.sessionView.classList.remove('hidden');
         elements.currentSessionIdSpan.textContent = currentSessionId;
-    }
-
-    function shareSession() {
-        const shareUrl = `https://t.me/WhatToWatchTogether_bot?startapp=${currentSessionId}`;
-        tg.shareUrl(shareUrl, `Присоединяйтесь к моей сессии: ${currentSessionId}`);
     }
 
     function copySessionId() {
@@ -222,7 +220,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderLists() {
+    async function deleteSession(sessionId) {
+        try {
+            delete sessions[sessionId];
+            localStorage.setItem('sessions', JSON.stringify(sessions));
+            if (currentSessionId === sessionId) {
+                localStorage.removeItem(SESSION_STORAGE_KEY);
+                currentSessionId = null;
+            }
+            await renderSessions();
+            tg.showAlert('Сессия удалена');
+        } catch (error) {
+            console.error('Ошибка удаления сессии:', error);
+            tg.showAlert(`Ошибка: ${error.message}`);
+        }
+    }
+
+    function clearSessions() {
+        sessions = {};
+        localStorage.removeItem('sessions');
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+        currentSessionId = null;
+        renderSessions();
+        tg.showAlert('Все сессии удалены');
+    }
+
+    async function renderLists() {
         elements.listsContainer.innerHTML = '';
         lists.forEach((item, index) => {
             const itemEl = document.createElement('div');
@@ -242,24 +265,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderSessions() {
+    async function renderSessions() {
         elements.sessionsContainer.innerHTML = '';
-        Object.keys(sessions).forEach(sessionId => {
+        for (const sessionId of Object.keys(sessions)) {
             const sessionEl = document.createElement('div');
             sessionEl.className = 'list-item';
 
+            const detailsEl = document.createElement('div');
+            detailsEl.className = 'session-details';
+
             const textEl = document.createElement('span');
-            textEl.textContent = `Сессия: ${sessionId}`;
+            textEl.textContent = sessions[sessionId].name;
+
+            const buttonsEl = document.createElement('div');
+            buttonsEl.style.display = 'flex';
+            buttonsEl.style.gap = '0.5rem';
 
             const joinBtn = document.createElement('button');
             joinBtn.className = 'btn btn-primary btn-small';
             joinBtn.textContent = 'Присоединиться';
             joinBtn.onclick = () => joinExistingSession(sessionId);
 
-            sessionEl.appendChild(textEl);
-            sessionEl.appendChild(joinBtn);
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-secondary btn-small';
+            deleteBtn.textContent = 'Удалить';
+            deleteBtn.onclick = () => deleteSession(sessionId);
+
+            buttonsEl.appendChild(joinBtn);
+            buttonsEl.appendChild(deleteBtn);
+            detailsEl.appendChild(textEl);
+            detailsEl.appendChild(buttonsEl);
+
+            // Получение списка пользователей
+            try {
+                const response = await fetch(`/get_session_info?session_id=${sessionId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    const usersEl = document.createElement('div');
+                    usersEl.className = 'users-list';
+                    usersEl.textContent = `Пользователи: ${data.users.length > 0 ? data.users.join(', ') : 'Нет пользователей'}`;
+                    sessionEl.appendChild(detailsEl);
+                    sessionEl.appendChild(usersEl);
+                }
+            } catch (error) {
+                console.error('Ошибка получения пользователей:', error);
+            }
+
             elements.sessionsContainer.appendChild(sessionEl);
-        });
+        }
     }
 
     // Инициализация
