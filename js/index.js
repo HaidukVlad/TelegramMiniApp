@@ -9,32 +9,67 @@ tg.expand();
 tg.ready();
 
 let currentSessionId = null;
+let sessions = JSON.parse(localStorage.getItem('sessions') || '{}');
 let lists = [];
 
 const SESSION_STORAGE_KEY = 'last_session_id';
 
 // DOM элементы
 const elements = {
-    createSession: document.getElementById('create_session'),
+    mainMenu: document.getElementById('main_menu'),
     joinSection: document.getElementById('join_session'),
+    sessionList: document.getElementById('session_list'),
     sessionView: document.getElementById('session_view'),
     createBtn: document.getElementById('create_btn'),
     joinBtn: document.getElementById('join_btn'),
+    listBtn: document.getElementById('list_btn'),
+    joinSubmitBtn: document.getElementById('join_submit_btn'),
+    backBtn: document.getElementById('back_btn'),
+    listBackBtn: document.getElementById('list_back_btn'),
+    sessionBackBtn: document.getElementById('session_back_btn'),
     sessionIdInput: document.getElementById('session_id_input'),
     currentSessionIdSpan: document.getElementById('current_session_id'),
     shareBtn: document.getElementById('share_btn'),
+    copyBtn: document.getElementById('copy_btn'),
     listsContainer: document.getElementById('lists_container'),
+    sessionsContainer: document.getElementById('sessions_container'),
     newItemInput: document.getElementById('new_item'),
-    addBtn: document.getElementById('add_btn'),
-    copyBtn: document.getElementById('copy_btn')
+    addBtn: document.getElementById('add_btn')
 };
 
 // Обработчики событий
 elements.createBtn.addEventListener('click', createNewSession);
-elements.joinBtn.addEventListener('click', joinExistingSession);
+elements.joinBtn.addEventListener('click', showJoinSection);
+elements.listBtn.addEventListener('click', showSessionList);
+elements.joinSubmitBtn.addEventListener('click', joinExistingSession);
+elements.backBtn.addEventListener('click', showMainMenu);
+elements.listBackBtn.addEventListener('click', showMainMenu);
+elements.sessionBackBtn.addEventListener('click', showMainMenu);
 elements.shareBtn.addEventListener('click', shareSession);
-elements.addBtn.addEventListener('click', addNewItem);
 elements.copyBtn.addEventListener('click', copySessionId);
+elements.addBtn.addEventListener('click', addNewItem);
+
+function showMainMenu() {
+    elements.mainMenu.classList.remove('hidden');
+    elements.joinSection.classList.add('hidden');
+    elements.sessionList.classList.add('hidden');
+    elements.sessionView.classList.add('hidden');
+}
+
+function showJoinSection() {
+    elements.mainMenu.classList.add('hidden');
+    elements.joinSection.classList.remove('hidden');
+    elements.sessionList.classList.add('hidden');
+    elements.sessionView.classList.add('hidden');
+}
+
+function showSessionList() {
+    elements.mainMenu.classList.add('hidden');
+    elements.joinSection.classList.add('hidden');
+    elements.sessionList.classList.remove('hidden');
+    elements.sessionView.classList.add('hidden');
+    renderSessions();
+}
 
 async function createNewSession() {
     elements.createBtn.disabled = true;
@@ -55,8 +90,10 @@ async function createNewSession() {
 
         if (data.status === 'success') {
             currentSessionId = data.session_id;
-            // Сохраняем session_id
+            sessions[currentSessionId] = { lists: [] };
+            localStorage.setItem('sessions', JSON.stringify(sessions));
             localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
+            lists = sessions[currentSessionId].lists;
             setupSessionView();
             tg.showAlert(`Сессия создана: ${currentSessionId}`);
         } else {
@@ -77,8 +114,8 @@ async function joinExistingSession(sessionId = elements.sessionIdInput.value.tri
         return;
     }
 
-    elements.joinBtn.disabled = true;
-    elements.joinBtn.textContent = 'Присоединение...';
+    elements.joinSubmitBtn.disabled = true;
+    elements.joinSubmitBtn.textContent = 'Присоединение...';
     try {
         const response = await fetch('/join_session', {
             method: 'POST',
@@ -96,8 +133,12 @@ async function joinExistingSession(sessionId = elements.sessionIdInput.value.tri
 
         if (data.status === 'success') {
             currentSessionId = sessionId;
+            if (!sessions[currentSessionId]) {
+                sessions[currentSessionId] = { lists: [] };
+            }
+            localStorage.setItem('sessions', JSON.stringify(sessions));
             localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
-            lists = data.lists || [];
+            lists = sessions[currentSessionId].lists;
             setupSessionView();
             renderLists();
             tg.showAlert('Успешно присоединились к сессии');
@@ -107,19 +148,21 @@ async function joinExistingSession(sessionId = elements.sessionIdInput.value.tri
     } catch (error) {
         console.error('Ошибка присоединения:', error);
         tg.showAlert(`Ошибка: ${error.message}`);
-        // Удаляем session_id, если сессия истекла или не найдена
-        if (error.message.includes('Session expired') || error.message.includes('Session not found')) {
+        if (error.message.includes('Session not found')) {
+            delete sessions[sessionId];
+            localStorage.setItem('sessions', JSON.stringify(sessions));
             localStorage.removeItem(SESSION_STORAGE_KEY);
         }
     } finally {
-        elements.joinBtn.disabled = false;
-        elements.joinBtn.textContent = 'Присоединиться';
+        elements.joinSubmitBtn.disabled = false;
+        elements.joinSubmitBtn.textContent = 'Присоединиться';
     }
 }
 
 function setupSessionView() {
-    elements.createSession.classList.add('hidden');
+    elements.mainMenu.classList.add('hidden');
     elements.joinSection.classList.add('hidden');
+    elements.sessionList.classList.add('hidden');
     elements.sessionView.classList.remove('hidden');
     elements.currentSessionIdSpan.textContent = currentSessionId;
 }
@@ -145,30 +188,12 @@ async function addNewItem() {
     elements.addBtn.textContent = 'Добавление...';
     try {
         lists.push(item);
+        sessions[currentSessionId].lists = lists;
+        localStorage.setItem('sessions', JSON.stringify(sessions));
         elements.newItemInput.value = '';
         renderLists();
-
-        const response = await fetch('/update_list', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                session_id: currentSessionId,
-                list: lists
-            })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || `HTTP ошибка: ${response.status}`);
-        }
-
-        if (data.status !== 'success') {
-            throw new Error('Не удалось обновить список');
-        }
     } catch (error) {
         console.error('Ошибка добавления:', error);
-        lists.pop();
-        renderLists();
         tg.showAlert(`Ошибка: ${error.message}`);
     } finally {
         elements.addBtn.disabled = false;
@@ -179,30 +204,12 @@ async function addNewItem() {
 async function deleteItem(index) {
     try {
         lists.splice(index, 1);
+        sessions[currentSessionId].lists = lists;
+        localStorage.setItem('sessions', JSON.stringify(sessions));
         renderLists();
-
-        const response = await fetch('/update_list', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                session_id: currentSessionId,
-                list: lists
-            })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || `HTTP ошибка: ${response.status}`);
-        }
-
-        if (data.status !== 'success') {
-            throw new Error('Не удалось обновить список');
-        }
     } catch (error) {
         console.error('Ошибка удаления:', error);
         tg.showAlert(`Ошибка: ${error.message}`);
-        // Восстанавливаем список при ошибке
-        renderLists();
     }
 }
 
@@ -226,18 +233,38 @@ function renderLists() {
     });
 }
 
+function renderSessions() {
+    elements.sessionsContainer.innerHTML = '';
+    Object.keys(sessions).forEach(sessionId => {
+        const sessionEl = document.createElement('div');
+        sessionEl.className = 'list-item';
+
+        const textEl = document.createElement('span');
+        textEl.textContent = `Сессия: ${sessionId}`;
+
+        const joinBtn = document.createElement('button');
+        joinBtn.className = 'btn btn-primary btn-small';
+        joinBtn.textContent = 'Присоединиться';
+        joinBtn.onclick = () => joinExistingSession(sessionId);
+
+        sessionEl.appendChild(textEl);
+        sessionEl.appendChild(joinBtn);
+        elements.sessionsContainer.appendChild(sessionEl);
+    });
+}
+
 // Инициализация
 function initialize() {
     const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (savedSessionId) {
-        elements.sessionIdInput.value = savedSessionId;
+    if (savedSessionId && sessions[savedSessionId]) {
+        currentSessionId = savedSessionId;
+        lists = sessions[currentSessionId].lists;
         joinExistingSession(savedSessionId);
     } else if (tg.initDataUnsafe.start_param) {
         elements.sessionIdInput.value = tg.initDataUnsafe.start_param;
         joinExistingSession(tg.initDataUnsafe.start_param);
     } else {
-        elements.createSession.classList.remove('hidden');
-        elements.joinSection.classList.remove('hidden');
+        elements.mainMenu.classList.remove('hidden');
     }
 }
 

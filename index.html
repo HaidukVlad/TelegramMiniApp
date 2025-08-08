@@ -11,16 +11,25 @@
     <div class="container">
         <h1 class="title">Смотрим вместе!</h1>
 
-        <div id="create_session" class="section">
+        <div id="main_menu" class="section">
             <button id="create_btn" class="btn btn-primary">Создать комнату</button>
+            <button id="join_btn" class="btn btn-primary">Присоединиться</button>
+            <button id="list_btn" class="btn btn-primary">Список сессий</button>
         </div>
 
         <div id="join_session" class="section hidden">
             <input type="text" id="session_id_input" class="input" placeholder="Введите ID сессии">
-            <button id="join_btn" class="btn btn-primary">Присоединиться</button>
+            <button id="join_submit_btn" class="btn btn-primary">Присоединиться</button>
+            <button id="back_btn" class="btn btn-secondary">Назад</button>
+        </div>
+
+        <div id="session_list" class="section hidden">
+            <div id="sessions_container" class="lists-container"></div>
+            <button id="list_back_btn" class="btn btn-secondary">Назад</button>
         </div>
 
         <div id="session_view" class="section hidden">
+            <button id="session_back_btn" class="btn btn-secondary back-btn">Назад</button>
             <div class="session-info">
                 <span>ID сессии: </span><span id="current_session_id" class="session-id"></span>
                 <button id="copy_btn" class="btn btn-secondary btn-small">Копировать</button>

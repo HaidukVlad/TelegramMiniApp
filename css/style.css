@@ -76,6 +76,12 @@ body {
     font-size: 0.9rem;
 }
 
+.back-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+}
+
 .input {
     padding: 0.75rem;
     border: 1px solid #ccc;
@@ -147,6 +153,11 @@ body {
     .btn-small {
         padding: 0.4rem 0.8rem;
         font-size: 0.8rem;
+    }
+
+    .back-btn {
+        top: 0.5rem;
+        right: 0.5rem;
     }
 
     .input {
