@@ -1,34 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
     <link rel="stylesheet" href="css/style.css">
-    <title>Watch Together</title>
+    <title>Смотрим вместе</title>
 </head>
 <body>
     <div class="container">
-        <h1 class="title">Watch Together</h1>
+        <h1 class="title">Смотрим вместе!</h1>
 
         <div id="create_session" class="section">
-            <button id="create_btn" class="btn btn-primary">Create Room</button>
+            <button id="create_btn" class="btn btn-primary">Создать комнату</button>
         </div>
 
         <div id="join_session" class="section hidden">
-            <input type="text" id="session_id_input" class="input" placeholder="Enter session ID">
-            <button id="join_btn" class="btn btn-primary">Join Room</button>
+            <input type="text" id="session_id_input" class="input" placeholder="Введите ID сессии">
+            <button id="join_btn" class="btn btn-primary">Присоединиться</button>
         </div>
 
         <div id="session_view" class="section hidden">
             <div class="session-info">
-                <span>Session ID: </span><span id="current_session_id" class="session-id"></span>
+                <span>ID сессии: </span><span id="current_session_id" class="session-id"></span>
+                <button id="copy_btn" class="btn btn-secondary btn-small">Копировать</button>
             </div>
-            <button id="share_btn" class="btn btn-secondary">Share Room Link</button>
+            <button id="share_btn" class="btn btn-secondary">Поделиться ссылкой</button>
             <div id="lists_container" class="lists-container"></div>
             <div class="input-group">
-                <input type="text" id="new_item" class="input" placeholder="Add new item">
-                <button id="add_btn" class="btn btn-primary">Add</button>
+                <input type="text" id="new_item" class="input" placeholder="Добавить элемент">
+                <button id="add_btn" class="btn btn-primary">Добавить</button>
             </div>
         </div>
     </div>

@@ -1,8 +1,8 @@
 const tg = window.Telegram.WebApp;
 
 if (!tg) {
-    alert('Telegram WebApp not initialized!');
-    throw new Error('Telegram WebApp not initialized');
+    alert('Telegram WebApp не инициализирован!');
+    throw new Error('Telegram WebApp не инициализирован');
 }
 
 tg.expand();
@@ -11,7 +11,7 @@ tg.ready();
 let currentSessionId = null;
 let lists = [];
 
-// DOM elements
+// DOM элементы
 const elements = {
     createSession: document.getElementById('create_session'),
     joinSection: document.getElementById('join_session'),
@@ -23,16 +23,20 @@ const elements = {
     shareBtn: document.getElementById('share_btn'),
     listsContainer: document.getElementById('lists_container'),
     newItemInput: document.getElementById('new_item'),
-    addBtn: document.getElementById('add_btn')
+    addBtn: document.getElementById('add_btn'),
+    copyBtn: document.getElementById('copy_btn')
 };
 
-// Event listeners
+// Обработчики событий
 elements.createBtn.addEventListener('click', createNewSession);
 elements.joinBtn.addEventListener('click', joinExistingSession);
 elements.shareBtn.addEventListener('click', shareSession);
 elements.addBtn.addEventListener('click', addNewItem);
+elements.copyBtn.addEventListener('click', copySessionId);
 
 async function createNewSession() {
+    elements.createBtn.disabled = true;
+    elements.createBtn.textContent = 'Создание...';
     try {
         const response = await fetch('/create_session', {
             method: 'POST',
@@ -42,29 +46,36 @@ async function createNewSession() {
             })
         });
 
-        if (!response.ok) throw new Error('Network error');
-
         const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP ошибка: ${response.status}`);
+        }
+
         if (data.status === 'success') {
             currentSessionId = data.session_id;
             setupSessionView();
-            tg.showAlert(`Session created: ${currentSessionId}`);
+            tg.showAlert(`Сессия создана: ${currentSessionId}`);
         } else {
-            throw new Error(data.message || 'Failed to create session');
+            throw new Error(data.message || 'Не удалось создать сессию');
         }
     } catch (error) {
-        console.error('Create session error:', error);
-        tg.showAlert('Failed to create session');
+        console.error('Ошибка создания сессии:', error);
+        tg.showAlert(`Ошибка: ${error.message}`);
+    } finally {
+        elements.createBtn.disabled = false;
+        elements.createBtn.textContent = 'Создать комнату';
     }
 }
 
 async function joinExistingSession() {
     const sessionId = elements.sessionIdInput.value.trim();
     if (!sessionId) {
-        tg.showAlert('Please enter session ID');
+        tg.showAlert('Введите ID сессии');
         return;
     }
 
+    elements.joinBtn.disabled = true;
+    elements.joinBtn.textContent = 'Присоединение...';
     try {
         const response = await fetch('/join_session', {
             method: 'POST',
@@ -75,21 +86,26 @@ async function joinExistingSession() {
             })
         });
 
-        if (!response.ok) throw new Error('Network error');
-
         const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP ошибка: ${response.status}`);
+        }
+
         if (data.status === 'success') {
             currentSessionId = sessionId;
             lists = data.lists || [];
             setupSessionView();
             renderLists();
-            tg.showAlert('Successfully joined session');
+            tg.showAlert('Успешно присоединились к сессии');
         } else {
-            tg.showAlert(data.message || 'Session not found');
+            throw new Error(data.message || 'Сессия не найдена');
         }
     } catch (error) {
-        console.error('Join session error:', error);
-        tg.showAlert('Failed to join session');
+        console.error('Ошибка присоединения:', error);
+        tg.showAlert(`Ошибка: ${error.message}`);
+    } finally {
+        elements.joinBtn.disabled = false;
+        elements.joinBtn.textContent = 'Присоединиться';
     }
 }
 
@@ -102,16 +118,23 @@ function setupSessionView() {
 
 function shareSession() {
     const shareUrl = `https://t.me/WhatToWatchTogether_bot?startapp=${currentSessionId}`;
-    tg.shareUrl(shareUrl, `Join my Watch Together session: ${currentSessionId}`);
+    tg.shareUrl(shareUrl, `Присоединяйтесь к моей сессии: ${currentSessionId}`);
+}
+
+function copySessionId() {
+    navigator.clipboard.writeText(currentSessionId);
+    tg.showAlert('ID сессии скопирован!');
 }
 
 async function addNewItem() {
     const item = elements.newItemInput.value.trim();
     if (!item) {
-        tg.showAlert('Please enter item text');
+        tg.showAlert('Введите текст элемента');
         return;
     }
 
+    elements.addBtn.disabled = true;
+    elements.addBtn.textContent = 'Добавление...';
     try {
         lists.push(item);
         elements.newItemInput.value = '';
@@ -126,17 +149,22 @@ async function addNewItem() {
             })
         });
 
-        if (!response.ok) throw new Error('Update failed');
-
         const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP ошибка: ${response.status}`);
+        }
+
         if (data.status !== 'success') {
-            throw new Error('Update failed');
+            throw new Error('Не удалось обновить список');
         }
     } catch (error) {
-        console.error('Add item error:', error);
+        console.error('Ошибка добавления:', error);
         lists.pop();
         renderLists();
-        tg.showAlert('Failed to save item');
+        tg.showAlert(`Ошибка: ${error.message}`);
+    } finally {
+        elements.addBtn.disabled = false;
+        elements.addBtn.textContent = 'Добавить';
     }
 }
 
@@ -150,7 +178,7 @@ function renderLists() {
     });
 }
 
-// Initial setup
+// Инициализация
 function initialize() {
     if (tg.initDataUnsafe.start_param) {
         elements.sessionIdInput.value = tg.initDataUnsafe.start_param;

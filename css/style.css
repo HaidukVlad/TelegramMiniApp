@@ -51,7 +51,6 @@ body {
     cursor: pointer;
     font-size: 1rem;
     transition: background-color 0.2s;
-    width: 100%;
 }
 
 .btn-primary {
@@ -72,6 +71,11 @@ body {
     background: #5a6268;
 }
 
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
 .input {
     padding: 0.75rem;
     border: 1px solid #ccc;
@@ -90,6 +94,9 @@ body {
 .session-info {
     margin-bottom: 1rem;
     font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .session-id {
@@ -128,6 +135,11 @@ body {
     .btn {
         padding: 0.6rem 1rem;
         font-size: 0.9rem;
+    }
+
+    .btn-small {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
     }
 
     .input {
