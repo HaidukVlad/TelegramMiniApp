@@ -110,13 +110,20 @@ body {
     margin: 1rem 0;
 }
 
-.lists-container div {
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 0.75rem;
     border-bottom: 1px solid #eee;
     background: var(--bg-color);
     border-radius: 4px;
     margin-bottom: 0.5rem;
     word-break: break-word;
+}
+
+.list-item span {
+    flex-grow: 1;
 }
 
 .hidden {

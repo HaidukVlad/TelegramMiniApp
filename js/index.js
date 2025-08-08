@@ -11,6 +11,8 @@ tg.ready();
 let currentSessionId = null;
 let lists = [];
 
+const SESSION_STORAGE_KEY = 'last_session_id';
+
 // DOM элементы
 const elements = {
     createSession: document.getElementById('create_session'),
@@ -53,6 +55,8 @@ async function createNewSession() {
 
         if (data.status === 'success') {
             currentSessionId = data.session_id;
+            // Сохраняем session_id
+            localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
             setupSessionView();
             tg.showAlert(`Сессия создана: ${currentSessionId}`);
         } else {
@@ -67,8 +71,7 @@ async function createNewSession() {
     }
 }
 
-async function joinExistingSession() {
-    const sessionId = elements.sessionIdInput.value.trim();
+async function joinExistingSession(sessionId = elements.sessionIdInput.value.trim()) {
     if (!sessionId) {
         tg.showAlert('Введите ID сессии');
         return;
@@ -93,6 +96,7 @@ async function joinExistingSession() {
 
         if (data.status === 'success') {
             currentSessionId = sessionId;
+            localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
             lists = data.lists || [];
             setupSessionView();
             renderLists();
@@ -103,6 +107,10 @@ async function joinExistingSession() {
     } catch (error) {
         console.error('Ошибка присоединения:', error);
         tg.showAlert(`Ошибка: ${error.message}`);
+        // Удаляем session_id, если сессия истекла или не найдена
+        if (error.message.includes('Session expired') || error.message.includes('Session not found')) {
+            localStorage.removeItem(SESSION_STORAGE_KEY);
+        }
     } finally {
         elements.joinBtn.disabled = false;
         elements.joinBtn.textContent = 'Присоединиться';
@@ -168,21 +176,65 @@ async function addNewItem() {
     }
 }
 
+async function deleteItem(index) {
+    try {
+        lists.splice(index, 1);
+        renderLists();
+
+        const response = await fetch('/update_list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: currentSessionId,
+                list: lists
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP ошибка: ${response.status}`);
+        }
+
+        if (data.status !== 'success') {
+            throw new Error('Не удалось обновить список');
+        }
+    } catch (error) {
+        console.error('Ошибка удаления:', error);
+        tg.showAlert(`Ошибка: ${error.message}`);
+        // Восстанавливаем список при ошибке
+        renderLists();
+    }
+}
+
 function renderLists() {
     elements.listsContainer.innerHTML = '';
     lists.forEach((item, index) => {
         const itemEl = document.createElement('div');
-        itemEl.textContent = item;
         itemEl.className = 'list-item';
+
+        const textEl = document.createElement('span');
+        textEl.textContent = item;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-secondary btn-small';
+        deleteBtn.textContent = 'Удалить';
+        deleteBtn.onclick = () => deleteItem(index);
+
+        itemEl.appendChild(textEl);
+        itemEl.appendChild(deleteBtn);
         elements.listsContainer.appendChild(itemEl);
     });
 }
 
 // Инициализация
 function initialize() {
-    if (tg.initDataUnsafe.start_param) {
+    const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (savedSessionId) {
+        elements.sessionIdInput.value = savedSessionId;
+        joinExistingSession(savedSessionId);
+    } else if (tg.initDataUnsafe.start_param) {
         elements.sessionIdInput.value = tg.initDataUnsafe.start_param;
-        joinExistingSession();
+        joinExistingSession(tg.initDataUnsafe.start_param);
     } else {
         elements.createSession.classList.remove('hidden');
         elements.joinSection.classList.remove('hidden');
