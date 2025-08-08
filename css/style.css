@@ -53,9 +53,18 @@ body {
     transition: background-color 0.2s;
 }
 
+.main-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+}
+
+
 .btn-primary {
     background: var(--primary-color);
     color: var(--tg-theme-button-text-color, #ffffff);
+
 }
 
 .btn-primary:hover {
