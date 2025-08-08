@@ -2,6 +2,7 @@ from flask import Flask, render_template
 import logging
 
 app = Flask(__name__, template_folder='.')
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
