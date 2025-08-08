@@ -4,18 +4,15 @@ from collections import defaultdict
 from flask_cors import CORS
 
 app = Flask(__name__, template_folder='.')
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+app.secret_key = secrets.token_urlsafe(16)
 
-app = Flask(__name__, template_folder='.')
-app.secret_key = 'your-secret-key'
-
-# Хранилище данных в памяти (в реальном приложении используйте БД)
-shared_lists = defaultdict(dict)
-sessions = {}
+# In-memory storage (use a proper database in production)
+sessions = defaultdict(lambda: {'users': [], 'lists': []})
 
 
 @app.route('/')
-def web():
+def index():
     return render_template('index.html')
 
 
@@ -24,40 +21,49 @@ def create_session():
     try:
         data = request.get_json()
         user_id = data.get('user_id', 'unknown')
-        print(f"Creating session for user: {user_id}")
-
         session_id = secrets.token_urlsafe(8)
-        sessions[session_id] = {'users': [user_id], 'lists': []}
 
-        print(f"Session created: {session_id}")
-        return jsonify({'session_id': session_id})
+        sessions[session_id]['users'] = [user_id]
+        sessions[session_id]['lists'] = []
 
+        return jsonify({'status': 'success', 'session_id': session_id})
     except Exception as e:
-        print(f"Error in create_session: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @app.route('/join_session', methods=['POST'])
 def join_session():
-    session_id = request.json.get('session_id')
-    user_id = request.json.get('user_id')
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        user_id = data.get('user_id', 'unknown')
 
-    if session_id in sessions:
-        sessions[session_id]['users'].append(user_id)
-        return jsonify({'status': 'success', 'lists': sessions[session_id]['lists']})
-    return jsonify({'status': 'error', 'message': 'Session not found'}), 404
+        if session_id in sessions:
+            if user_id not in sessions[session_id]['users']:
+                sessions[session_id]['users'].append(user_id)
+            return jsonify({
+                'status': 'success',
+                'lists': sessions[session_id]['lists']
+            })
+        return jsonify({'status': 'error', 'message': 'Session not found'}), 404
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @app.route('/update_list', methods=['POST'])
 def update_list():
-    session_id = request.json.get('session_id')
-    list_data = request.json.get('list')
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        list_data = data.get('list')
 
-    if session_id in sessions:
-        sessions[session_id]['lists'] = list_data
-        return jsonify({'status': 'success'})
-    return jsonify({'status': 'error'}), 404
+        if session_id in sessions:
+            sessions[session_id]['lists'] = list_data
+            return jsonify({'status': 'success'})
+        return jsonify({'status': 'error', 'message': 'Session not found'}), 404
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -1,8 +1,10 @@
 const tg = window.Telegram.WebApp;
+
 if (!tg) {
     alert('Telegram WebApp not initialized!');
     throw new Error('Telegram WebApp not initialized');
 }
+
 tg.expand();
 tg.ready();
 
@@ -10,31 +12,31 @@ let currentSessionId = null;
 let lists = [];
 
 // DOM elements
-const createSection = document.getElementById('create_session');
-const joinSection = document.getElementById('join_session');
-const sessionView = document.getElementById('session_view');
-const createBtn = document.getElementById('create_btn');
-const joinBtn = document.getElementById('join_btn');
-const sessionIdInput = document.getElementById('session_id_input');
-const currentSessionIdSpan = document.getElementById('current_session_id');
-const shareBtn = document.getElementById('share_btn');
-const listsContainer = document.getElementById('lists_container');
-const newItemInput = document.getElementById('new_item');
-const addBtn = document.getElementById('add_btn');
+const elements = {
+    createSession: document.getElementById('create_session'),
+    joinSection: document.getElementById('join_session'),
+    sessionView: document.getElementById('session_view'),
+    createBtn: document.getElementById('create_btn'),
+    joinBtn: document.getElementById('join_btn'),
+    sessionIdInput: document.getElementById('session_id_input'),
+    currentSessionIdSpan: document.getElementById('current_session_id'),
+    shareBtn: document.getElementById('share_btn'),
+    listsContainer: document.getElementById('lists_container'),
+    newItemInput: document.getElementById('new_item'),
+    addBtn: document.getElementById('add_btn')
+};
 
 // Event listeners
-createBtn.addEventListener('click', createNewSession);
-joinBtn.addEventListener('click', joinExistingSession);
-shareBtn.addEventListener('click', shareSession);
-addBtn.addEventListener('click', addNewItem);
+elements.createBtn.addEventListener('click', createNewSession);
+elements.joinBtn.addEventListener('click', joinExistingSession);
+elements.shareBtn.addEventListener('click', shareSession);
+elements.addBtn.addEventListener('click', addNewItem);
 
 async function createNewSession() {
     try {
         const response = await fetch('/create_session', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 user_id: tg.initDataUnsafe.user?.id || 'default_user'
             })
@@ -43,9 +45,13 @@ async function createNewSession() {
         if (!response.ok) throw new Error('Network error');
 
         const data = await response.json();
-        currentSessionId = data.session_id;
-        setupSessionView();
-        tg.showAlert(`Session created: ${currentSessionId}`);
+        if (data.status === 'success') {
+            currentSessionId = data.session_id;
+            setupSessionView();
+            tg.showAlert(`Session created: ${currentSessionId}`);
+        } else {
+            throw new Error(data.message || 'Failed to create session');
+        }
     } catch (error) {
         console.error('Create session error:', error);
         tg.showAlert('Failed to create session');
@@ -53,7 +59,7 @@ async function createNewSession() {
 }
 
 async function joinExistingSession() {
-    const sessionId = sessionIdInput.value.trim();
+    const sessionId = elements.sessionIdInput.value.trim();
     if (!sessionId) {
         tg.showAlert('Please enter session ID');
         return;
@@ -62,9 +68,7 @@ async function joinExistingSession() {
     try {
         const response = await fetch('/join_session', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 session_id: sessionId,
                 user_id: tg.initDataUnsafe.user?.id || 'default_user'
@@ -89,47 +93,20 @@ async function joinExistingSession() {
     }
 }
 
-function joinExistingSession() {
-    const sessionId = sessionIdInput.value.trim();
-    if (!sessionId) return;
-
-    fetch('/join_session', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            session_id: sessionId,
-            user_id: tg.initDataUnsafe.user?.id
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            currentSessionId = sessionId;
-            lists = data.lists || [];
-            setupSessionView();
-            renderLists();
-        } else {
-            alert('Session not found');
-        }
-    });
-}
-
 function setupSessionView() {
-    createSection.classList.add('hidden');
-    joinSection.classList.add('hidden');
-    sessionView.classList.remove('hidden');
-    currentSessionIdSpan.textContent = currentSessionId;
+    elements.createSession.classList.add('hidden');
+    elements.joinSection.classList.add('hidden');
+    elements.sessionView.classList.remove('hidden');
+    elements.currentSessionIdSpan.textContent = currentSessionId;
 }
 
 function shareSession() {
     const shareUrl = `https://t.me/WhatToWatchTogether_bot?startapp=${currentSessionId}`;
-    tg.shareUrl(shareUrl);
+    tg.shareUrl(shareUrl, `Join my Watch Together session: ${currentSessionId}`);
 }
 
 async function addNewItem() {
-    const item = newItemInput.value.trim();
+    const item = elements.newItemInput.value.trim();
     if (!item) {
         tg.showAlert('Please enter item text');
         return;
@@ -137,14 +114,12 @@ async function addNewItem() {
 
     try {
         lists.push(item);
-        newItemInput.value = '';
+        elements.newItemInput.value = '';
         renderLists();
 
         const response = await fetch('/update_list', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 session_id: currentSessionId,
                 list: lists
@@ -153,29 +128,37 @@ async function addNewItem() {
 
         if (!response.ok) throw new Error('Update failed');
 
+        const data = await response.json();
+        if (data.status !== 'success') {
+            throw new Error('Update failed');
+        }
     } catch (error) {
         console.error('Add item error:', error);
-        tg.showAlert('Failed to save item');
-        lists.pop(); // Откатываем изменение при ошибке
+        lists.pop();
         renderLists();
+        tg.showAlert('Failed to save item');
     }
 }
 
 function renderLists() {
-    listsContainer.innerHTML = '';
-    lists.forEach(item => {
+    elements.listsContainer.innerHTML = '';
+    lists.forEach((item, index) => {
         const itemEl = document.createElement('div');
         itemEl.textContent = item;
-        listsContainer.appendChild(itemEl);
+        itemEl.className = 'list-item';
+        elements.listsContainer.appendChild(itemEl);
     });
 }
 
 // Initial setup
-if (tg.initDataUnsafe.start_param) {
-    // If launched with session ID in start_param
-    sessionIdInput.value = tg.initDataUnsafe.start_param;
-    joinExistingSession();
-} else {
-    createSection.classList.remove('hidden');
-    joinSection.classList.remove('hidden');
+function initialize() {
+    if (tg.initDataUnsafe.start_param) {
+        elements.sessionIdInput.value = tg.initDataUnsafe.start_param;
+        joinExistingSession();
+    } else {
+        elements.createSession.classList.remove('hidden');
+        elements.joinSection.classList.remove('hidden');
+    }
 }
+
+initialize();
