@@ -42,5 +42,15 @@
     </div>
 
     <script type="module" src="./js/index.js"></script>
+    <script>
+    window.onerror = function (message, source, lineno, colno, error) {
+        document.body.innerHTML += `<div style="color:red;">
+            Ошибка: ${message}<br>
+            В файле: ${source}<br>
+            Строка: ${lineno}:${colno}<br>
+            Детали: ${error}
+        </div>`;
+    };
+    </script>
 </body>
 </html>
