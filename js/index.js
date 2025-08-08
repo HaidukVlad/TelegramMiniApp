@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  // Получаем уникальный ID пользователя из Telegram (используем user.id)
+  // тг ID пользователя
   const userId = tg.initDataUnsafe.user?.id?.toString() || 'unknown_user';
 
   // DOM элементы
@@ -64,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionNameInput: document.getElementById('session_name_input'),
   };
 
-  // Скрыть все секции
   function hideAllSections() {
     elements.mainMenu.classList.add('hidden');
     elements.joinSection.classList.add('hidden');
@@ -84,13 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.createBtn.textContent = 'Создание...';
 
     try {
-      // Генерируем уникальный ID сессии (8 символов base64)
+      // UID сессии (8 символов base64)
       const sessionId = btoa(String(Math.random())).slice(0, 8);
 
       // Документ сессии в Firestore под userId в коллекции usersSessions
       const sessionDocRef = doc(db, "usersSessions", userId, "sessions", sessionId);
 
-      // Создаем сессию с пустым списком
+      // сессия с пустым списком
       await setDoc(sessionDocRef, {
         name,
         lists: [],
@@ -329,11 +328,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Инициализация ---
 
-  (async function initialize() {
-    showMainMenu();
-    // Автоматически открыть сессию из start_param если есть
-    if (tg.initDataUnsafe.start_param) {
-      await joinExistingSession(tg.initDataUnsafe.start_param);
-    }
-  })();
+  (async function initialize() {showMainMenu();})();
 });
