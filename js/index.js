@@ -9,8 +9,20 @@ document.addEventListener('DOMContentLoaded', () => {
     tg.expand();
     tg.ready();
 
+    // Инициализация Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyA7eZyKVLL9AmPKjFlEsktb9EH2UUpZyco",
+        authDomain: "whattowatchtogether.firebaseapp.com",
+        projectId: "whattowatchtogether",
+        storageBucket: "whattowatchtogether.firebasestorage.app",
+        messagingSenderId: "748164363806",
+        appId: "1:748164363806:web:5c1b8dd08310c43fa4a00f",
+        measurementId: "G-YNMECW3GX7"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     let currentSessionId = null;
-    let sessions = JSON.parse(localStorage.getItem('sessions') || '{}');
     let lists = [];
 
     const SESSION_STORAGE_KEY = 'last_session_id';
@@ -46,6 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Ошибка: некоторые элементы интерфейса не найдены. Проверьте HTML.');
         return;
     }
+
+    // Скрыть все секции при загрузке
+    elements.mainMenu.classList.add('hidden');
+    elements.joinSection.classList.add('hidden');
+    elements.sessionList.classList.add('hidden');
+    elements.sessionView.classList.add('hidden');
 
     // Обработчики событий
     elements.createBtn.addEventListener('click', createNewSession);
@@ -86,31 +104,20 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.createBtn.disabled = true;
         elements.createBtn.textContent = 'Создание...';
         try {
-            const response = await fetch('/create_session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: tg.initDataUnsafe.user?.id || 'default_user'
-                })
+            const sessionId = btoa(String(Math.random())).slice(0, 8); // Простой генератор ID
+            const username = tg.initDataUnsafe.user?.username ? `@${tg.initDataUnsafe.user.username}` : `@user${tg.initDataUnsafe.user?.id || 'unknown'}`;
+            await db.collection('sessions').doc(sessionId).set({
+                name: sessionName,
+                lists: [],
+                users: [username],
+                created_at: firebase.firestore.FieldValue.serverTimestamp()
             });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP ошибка: ${response.status}`);
-            }
-
-            if (data.status === 'success') {
-                currentSessionId = data.session_id;
-                sessions[currentSessionId] = { name: sessionName, lists: [] };
-                localStorage.setItem('sessions', JSON.stringify(sessions));
-                localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
-                lists = sessions[currentSessionId].lists;
-                elements.sessionNameInput.value = '';
-                setupSessionView();
-                tg.showAlert(`Сессия создана: ${currentSessionId}`);
-            } else {
-                throw new Error(data.message || 'Не удалось создать сессию');
-            }
+            currentSessionId = sessionId;
+            lists = [];
+            localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
+            elements.sessionNameInput.value = '';
+            setupSessionView();
+            tg.showAlert(`Сессия создана: ${currentSessionId}`);
         } catch (error) {
             console.error('Ошибка создания сессии:', error);
             tg.showAlert(`Ошибка: ${error.message}`);
@@ -129,42 +136,24 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.joinSubmitBtn.disabled = true;
         elements.joinSubmitBtn.textContent = 'Присоединение...';
         try {
-            const response = await fetch('/join_session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    session_id: sessionId,
-                    user_id: tg.initDataUnsafe.user?.id || 'default_user'
-                })
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP ошибка: ${response.status}`);
-            }
-
-            if (data.status === 'success') {
+            const doc = await db.collection('sessions').doc(sessionId).get();
+            if (doc.exists) {
+                const username = tg.initDataUnsafe.user?.username ? `@${tg.initDataUnsafe.user.username}` : `@user${tg.initDataUnsafe.user?.id || 'unknown'}`;
+                await db.collection('sessions').doc(sessionId).update({
+                    users: firebase.firestore.FieldValue.arrayUnion(username)
+                });
                 currentSessionId = sessionId;
-                if (!sessions[currentSessionId]) {
-                    sessions[currentSessionId] = { name: `Сессия ${sessionId}`, lists: [] };
-                }
-                localStorage.setItem('sessions', JSON.stringify(sessions));
+                lists = doc.data().lists || [];
                 localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
-                lists = sessions[currentSessionId].lists;
                 setupSessionView();
                 renderLists();
                 tg.showAlert('Успешно присоединились к сессии');
             } else {
-                throw new Error(data.message || 'Сессия не найдена');
+                throw new Error('Сессия не найдена');
             }
         } catch (error) {
             console.error('Ошибка присоединения:', error);
             tg.showAlert(`Ошибка: ${error.message}`);
-            if (error.message.includes('Session not found')) {
-                delete sessions[sessionId];
-                localStorage.setItem('sessions', JSON.stringify(sessions));
-                localStorage.removeItem(SESSION_STORAGE_KEY);
-            }
         } finally {
             elements.joinSubmitBtn.disabled = false;
             elements.joinSubmitBtn.textContent = 'Присоединиться';
@@ -195,8 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.addBtn.textContent = 'Добавление...';
         try {
             lists.push(item);
-            sessions[currentSessionId].lists = lists;
-            localStorage.setItem('sessions', JSON.stringify(sessions));
+            await db.collection('sessions').doc(currentSessionId).update({
+                lists: lists
+            });
             elements.newItemInput.value = '';
             renderLists();
         } catch (error) {
@@ -211,8 +201,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteItem(index) {
         try {
             lists.splice(index, 1);
-            sessions[currentSessionId].lists = lists;
-            localStorage.setItem('sessions', JSON.stringify(sessions));
+            await db.collection('sessions').doc(currentSessionId).update({
+                lists: lists
+            });
             renderLists();
         } catch (error) {
             console.error('Ошибка удаления:', error);
@@ -222,8 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteSession(sessionId) {
         try {
-            delete sessions[sessionId];
-            localStorage.setItem('sessions', JSON.stringify(sessions));
+            await db.collection('sessions').doc(sessionId).delete();
             if (currentSessionId === sessionId) {
                 localStorage.removeItem(SESSION_STORAGE_KEY);
                 currentSessionId = null;
@@ -236,13 +226,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function clearSessions() {
-        sessions = {};
-        localStorage.removeItem('sessions');
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-        currentSessionId = null;
-        renderSessions();
-        tg.showAlert('Все сессии удалены');
+    async function clearSessions() {
+        try {
+            const snapshot = await db.collection('sessions').get();
+            const batch = db.batch();
+            snapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            localStorage.removeItem(SESSION_STORAGE_KEY);
+            currentSessionId = null;
+            renderSessions();
+            tg.showAlert('Все сессии удалены');
+        } catch (error) {
+            console.error('Ошибка очистки сессий:', error);
+            tg.showAlert(`Ошибка: ${error.message}`);
+        }
     }
 
     async function renderLists() {
@@ -267,69 +266,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function renderSessions() {
         elements.sessionsContainer.innerHTML = '';
-        for (const sessionId of Object.keys(sessions)) {
-            const sessionEl = document.createElement('div');
-            sessionEl.className = 'list-item';
+        try {
+            const snapshot = await db.collection('sessions').get();
+            snapshot.forEach(doc => {
+                const sessionId = doc.id;
+                const data = doc.data();
+                const sessionEl = document.createElement('div');
+                sessionEl.className = 'list-item';
 
-            const detailsEl = document.createElement('div');
-            detailsEl.className = 'session-details';
+                const detailsEl = document.createElement('div');
+                detailsEl.className = 'session-details';
 
-            const textEl = document.createElement('span');
-            textEl.textContent = sessions[sessionId].name;
+                const textEl = document.createElement('span');
+                textEl.textContent = data.name;
 
-            const buttonsEl = document.createElement('div');
-            buttonsEl.style.display = 'flex';
-            buttonsEl.style.gap = '0.5rem';
+                const buttonsEl = document.createElement('div');
+                buttonsEl.style.display = 'flex';
+                buttonsEl.style.gap = '0.5rem';
 
-            const joinBtn = document.createElement('button');
-            joinBtn.className = 'btn btn-primary btn-small';
-            joinBtn.textContent = 'Присоединиться';
-            joinBtn.onclick = () => joinExistingSession(sessionId);
+                const joinBtn = document.createElement('button');
+                joinBtn.className = 'btn btn-primary btn-small';
+                joinBtn.textContent = 'Присоединиться';
+                joinBtn.onclick = () => joinExistingSession(sessionId);
 
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'btn btn-secondary btn-small';
-            deleteBtn.textContent = 'Удалить';
-            deleteBtn.onclick = () => deleteSession(sessionId);
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-secondary btn-small';
+                deleteBtn.textContent = 'Удалить';
+                deleteBtn.onclick = () => deleteSession(sessionId);
 
-            buttonsEl.appendChild(joinBtn);
-            buttonsEl.appendChild(deleteBtn);
-            detailsEl.appendChild(textEl);
-            detailsEl.appendChild(buttonsEl);
+                buttonsEl.appendChild(joinBtn);
+                buttonsEl.appendChild(deleteBtn);
+                detailsEl.appendChild(textEl);
+                detailsEl.appendChild(buttonsEl);
 
-            // Получение списка пользователей
-            try {
-                const response = await fetch(`/get_session_info?session_id=${sessionId}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await response.json();
-                if (data.status === 'success') {
-                    const usersEl = document.createElement('div');
-                    usersEl.className = 'users-list';
-                    usersEl.textContent = `Пользователи: ${data.users.length > 0 ? data.users.join(', ') : 'Нет пользователей'}`;
-                    sessionEl.appendChild(detailsEl);
-                    sessionEl.appendChild(usersEl);
-                }
-            } catch (error) {
-                console.error('Ошибка получения пользователей:', error);
-            }
+                const usersEl = document.createElement('div');
+                usersEl.className = 'users-list';
+                usersEl.textContent = `Пользователи: ${data.users.length > 0 ? data.users.join(', ') : 'Нет пользователей'}`;
+                sessionEl.appendChild(detailsEl);
+                sessionEl.appendChild(usersEl);
 
-            elements.sessionsContainer.appendChild(sessionEl);
+                elements.sessionsContainer.appendChild(sessionEl);
+            });
+        } catch (error) {
+            console.error('Ошибка получения сессий:', error);
+            tg.showAlert(`Ошибка: ${error.message}`);
         }
     }
 
     // Инициализация
     function initialize() {
         const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
-        if (savedSessionId && sessions[savedSessionId]) {
-            currentSessionId = savedSessionId;
-            lists = sessions[currentSessionId].lists;
+        if (savedSessionId) {
             joinExistingSession(savedSessionId);
         } else if (tg.initDataUnsafe.start_param) {
             elements.sessionIdInput.value = tg.initDataUnsafe.start_param;
             joinExistingSession(tg.initDataUnsafe.start_param);
         } else {
-            elements.mainMenu.classList.remove('hidden');
+            showMainMenu();
         }
     }
 

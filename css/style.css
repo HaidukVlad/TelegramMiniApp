@@ -51,6 +51,10 @@ body {
     width: 100%;
 }
 
+.section.hidden {
+    display: none !important;
+}
+
 .btn {
     padding: 0.75rem 1.5rem;
     border: none;
@@ -150,10 +154,6 @@ body {
 
 .list-item span {
     flex-grow: 1;
-}
-
-.hidden {
-    display: none !important;
 }
 
 @media (max-width: 480px) {
