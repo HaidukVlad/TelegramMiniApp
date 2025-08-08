@@ -9,17 +9,13 @@ import {
   getDocs,
   deleteDoc,
   serverTimestamp,
-  arrayUnion,
-  arrayRemove,
-  query,
-  where
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
   const tg = window.Telegram.WebApp;
   if (!tg) {
-    alert('Telegram WebApp не инициализирован!');
-    throw new Error('Telegram WebApp не инициализирован');
+    alert("Telegram WebApp не инициализирован!");
+    throw new Error("Telegram WebApp не инициализирован");
   }
   tg.expand();
   tg.ready();
@@ -32,64 +28,83 @@ document.addEventListener('DOMContentLoaded', () => {
     storageBucket: "whattowatchtogether.firebasestorage.app",
     messagingSenderId: "748164363806",
     appId: "1:748164363806:web:5c1b8dd08310c43fa4a00f",
-    measurementId: "G-YNMECW3GX7"
+    measurementId: "G-YNMECW3GX7",
   };
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
   // тг ID пользователя
-  const userId = tg.initDataUnsafe.user?.id?.toString() || 'unknown_user';
+  const userId = tg.initDataUnsafe.user?.id?.toString() || "unknown_user";
 
   // DOM элементы
   const elements = {
-    mainMenu: document.getElementById('main_menu'),
-    joinSection: document.getElementById('join_session'),
-    sessionList: document.getElementById('session_list'),
-    sessionView: document.getElementById('session_view'),
-    createBtn: document.getElementById('create_btn'),
-    joinBtn: document.getElementById('join_btn'),
-    listBtn: document.getElementById('list_btn'),
-    joinSubmitBtn: document.getElementById('join_submit_btn'),
-    backBtn: document.getElementById('back_btn'),
-    listBackBtn: document.getElementById('list_back_btn'),
-    sessionBackBtn: document.getElementById('session_back_btn'),
-    sessionIdInput: document.getElementById('session_id_input'),
-    currentSessionIdSpan: document.getElementById('current_session_id'),
-    copyBtn: document.getElementById('copy_btn'),
-    listsContainer: document.getElementById('lists_container'),
-    sessionsContainer: document.getElementById('sessions_container'),
-    newItemInput: document.getElementById('new_item'),
-    addBtn: document.getElementById('add_btn'),
-    sessionNameInput: document.getElementById('session_name_input'),
+    mainMenu: document.getElementById("main_menu"),
+    joinSection: document.getElementById("join_session"),
+    sessionList: document.getElementById("session_list"),
+    sessionView: document.getElementById("session_view"),
+    createBtn: document.getElementById("create_btn"),
+    joinBtn: document.getElementById("join_btn"),
+    listBtn: document.getElementById("list_btn"),
+    joinSubmitBtn: document.getElementById("join_submit_btn"),
+    backBtn: document.getElementById("back_btn"),
+    listBackBtn: document.getElementById("list_back_btn"),
+    sessionBackBtn: document.getElementById("session_back_btn"),
+    sessionIdInput: document.getElementById("session_id_input"),
+    currentSessionIdSpan: document.getElementById("current_session_id"),
+    copyBtn: document.getElementById("copy_btn"),
+    listsContainer: document.getElementById("lists_container"),
+    sessionsContainer: document.getElementById("sessions_container"),
+    newItemInput: document.getElementById("new_item"),
+    addBtn: document.getElementById("add_btn"),
+    sessionNameInput: document.getElementById("session_name_input"),
+    clearSessionsBtn: document.getElementById("clear_sessions_btn"),
+    toastContainer: document.getElementById("toast_container"),
   };
 
   function hideAllSections() {
-    elements.mainMenu.classList.add('hidden');
-    elements.joinSection.classList.add('hidden');
-    elements.sessionList.classList.add('hidden');
-    elements.sessionView.classList.add('hidden');
+    elements.mainMenu.classList.add("hidden");
+    elements.joinSection.classList.add("hidden");
+    elements.sessionList.classList.add("hidden");
+    elements.sessionView.classList.add("hidden");
   }
 
   // Текущая сессия
   let currentSessionId = null;
   let currentSessionData = null;
 
+  // --- Функция показа toast уведомлений ---
+  function showToast(message) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = message;
+    elements.toastContainer.appendChild(toast);
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  }
+
   // --- Функции управления сессиями ---
 
   async function createNewSession() {
-    const name = elements.sessionNameInput.value.trim() || `Сессия ${new Date().toLocaleDateString('ru-RU')}`;
+    const name =
+      elements.sessionNameInput.value.trim() ||
+      `Сессия ${new Date().toLocaleDateString("ru-RU")}`;
     elements.createBtn.disabled = true;
-    elements.createBtn.textContent = 'Создание...';
+    elements.createBtn.textContent = "Создание...";
 
     try {
-      // UID сессии (8 символов base64)
+      // Генерация UID сессии (8 символов base64)
       const sessionId = btoa(String(Math.random())).slice(0, 8);
 
-      // Документ сессии в Firestore под userId в коллекции usersSessions
-      const sessionDocRef = doc(db, "usersSessions", userId, "sessions", sessionId);
+      const sessionDocRef = doc(
+        db,
+        "usersSessions",
+        userId,
+        "sessions",
+        sessionId
+      );
 
-      // сессия с пустым списком
       await setDoc(sessionDocRef, {
         name,
         lists: [],
@@ -98,36 +113,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
       currentSessionId = sessionId;
       currentSessionData = { name, lists: [] };
-      elements.sessionNameInput.value = '';
+      elements.sessionNameInput.value = "";
 
       showSessionView();
       renderLists();
       await loadUserSessions();
 
-      //tg.showAlert(`Сессия создана: ${sessionId}`);
+      showToast(`Сессия создана: ${sessionId}`);
     } catch (e) {
-      console.error('Ошибка создания сессии', e);
-      tg.showAlert(`Ошибка создания: ${e.message}`);
+      console.error("Ошибка создания сессии", e);
+      showToast(`Ошибка создания: ${e.message}`);
     } finally {
       elements.createBtn.disabled = false;
-      elements.createBtn.textContent = 'Создать комнату';
+      elements.createBtn.textContent = "Создать комнату";
     }
   }
 
   async function joinExistingSession(sessionId = elements.sessionIdInput.value.trim()) {
     if (!sessionId) {
-      //tg.showAlert('Введите ID сессии');
+      showToast("Введите ID сессии");
       return;
     }
 
     elements.joinSubmitBtn.disabled = true;
-    elements.joinSubmitBtn.textContent = 'Присоединение...';
+    elements.joinSubmitBtn.textContent = "Присоединение...";
 
     try {
       const sessionDocRef = doc(db, "usersSessions", userId, "sessions", sessionId);
       const docSnap = await getDoc(sessionDocRef);
       if (!docSnap.exists()) {
-        throw new Error('Сессия не найдена');
+        throw new Error("Сессия не найдена");
       }
 
       currentSessionId = sessionId;
@@ -136,68 +151,63 @@ document.addEventListener('DOMContentLoaded', () => {
       showSessionView();
       renderLists();
 
-      //tg.showAlert('Успешно присоединились к сессии');
+      showToast("Успешно присоединились к сессии");
     } catch (e) {
-      console.error('Ошибка присоединения к сессии', e);
-      tg.showAlert(`Ошибка: ${e.message}`);
+      console.error("Ошибка присоединения к сессии", e);
+      showToast(`Ошибка: ${e.message}`);
     } finally {
       elements.joinSubmitBtn.disabled = false;
-      elements.joinSubmitBtn.textContent = 'Присоединиться';
+      elements.joinSubmitBtn.textContent = "Присоединиться";
     }
   }
 
   async function loadUserSessions() {
-    elements.sessionsContainer.innerHTML = 'Загрузка...';
+    elements.sessionsContainer.textContent = "Загрузка...";
     try {
       const sessionsCol = collection(db, "usersSessions", userId, "sessions");
       const snapshot = await getDocs(sessionsCol);
 
-      elements.sessionsContainer.innerHTML = '';
+      elements.sessionsContainer.innerHTML = "";
       if (snapshot.empty) {
-        elements.sessionsContainer.textContent = 'Сессии не найдены';
+        elements.sessionsContainer.textContent = "Сессии не найдены";
         return;
       }
 
-      snapshot.forEach(docSnap => {
+      snapshot.forEach((docSnap) => {
         const id = docSnap.id;
         const data = docSnap.data();
 
-        const sessionEl = document.createElement('div');
-        sessionEl.className = 'list-item';
+        const sessionEl = document.createElement("div");
+        sessionEl.className = "list-item";
 
-        const detailsEl = document.createElement('div');
-        detailsEl.className = 'session-details';
-
-        const textEl = document.createElement('span');
+        const textEl = document.createElement("span");
         textEl.textContent = data.name;
 
-        const btnJoin = document.createElement('button');
-        btnJoin.className = 'btn btn-primary btn-small';
-        btnJoin.textContent = 'Открыть';
+        const btnJoin = document.createElement("button");
+        btnJoin.className = "btn btn-primary btn-small";
+        btnJoin.textContent = "Открыть";
         btnJoin.onclick = () => joinExistingSession(id);
 
-        const btnDelete = document.createElement('button');
-        btnDelete.className = 'btn btn-secondary btn-small';
-        btnDelete.textContent = 'Удалить';
+        const btnDelete = document.createElement("button");
+        btnDelete.className = "btn btn-secondary btn-small";
+        btnDelete.textContent = "Удалить";
         btnDelete.onclick = () => deleteSession(id);
 
-        detailsEl.appendChild(textEl);
-        detailsEl.appendChild(btnJoin);
-        detailsEl.appendChild(btnDelete);
-        sessionEl.appendChild(detailsEl);
+        sessionEl.appendChild(textEl);
+        sessionEl.appendChild(btnJoin);
+        sessionEl.appendChild(btnDelete);
         elements.sessionsContainer.appendChild(sessionEl);
       });
-
     } catch (e) {
-      console.error('Ошибка загрузки сессий', e);
-      elements.sessionsContainer.textContent = 'Ошибка загрузки сессий';
-      tg.showAlert(`Ошибка: ${e.message}`);
+      console.error("Ошибка загрузки сессий", e);
+      elements.sessionsContainer.textContent = "Ошибка загрузки сессий";
+      showToast(`Ошибка: ${e.message}`);
     }
   }
 
   async function deleteSession(sessionId) {
     if (!sessionId) return;
-    if (!confirm('Удалить эту сессию?')) return;
+    if (!confirm("Удалить эту сессию?")) return;
 
     try {
       const sessionDocRef = doc(db, "usersSessions", userId, "sessions", sessionId);
@@ -209,124 +219,175 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       await loadUserSessions();
       showMainMenu();
-      //tg.showAlert('Сессия удалена');
+      showToast("Сессия удалена");
     } catch (e) {
-      console.error('Ошибка удаления сессии', e);
-      tg.showAlert(`Ошибка: ${e.message}`);
+      console.error("Ошибка удаления сессии", e);
+      showToast(`Ошибка: ${e.message}`);
     }
   }
 
-  // --- Управление списком в сессии ---
-
-  async function addNewItem() {
-    const item = elements.newItemInput.value.trim();
-    if (!item) {
-      //tg.showAlert('Введите текст элемента');
-      return;
-    }
-    if (!currentSessionId) return;
-
-    elements.addBtn.disabled = true;
-    elements.addBtn.textContent = 'Добавление...';
+  async function clearAllSessions() {
+    if (!confirm("Удалить все сессии? Это действие необратимо.")) return;
 
     try {
-      currentSessionData.lists.push(item);
-
-      const sessionDocRef = doc(db, "usersSessions", userId, "sessions", currentSessionId);
-      await updateDoc(sessionDocRef, { lists: currentSessionData.lists });
-
-      elements.newItemInput.value = '';
-      renderLists();
+      const sessionsCol = collection(db, "usersSessions", userId, "sessions");
+      const snapshot = await getDocs(sessionsCol);
+      const promises = [];
+      snapshot.forEach((docSnap) => {
+        promises.push(deleteDoc(doc(db, "usersSessions", userId, "sessions", docSnap.id)));
+      });
+      await Promise.all(promises);
+      showToast("Все сессии удалены");
+      await loadUserSessions();
+      showMainMenu();
     } catch (e) {
-      console.error('Ошибка добавления элемента', e);
-      tg.showAlert(`Ошибка: ${e.message}`);
-    } finally {
-      elements.addBtn.disabled = false;
-      elements.addBtn.textContent = 'Добавить';
+      console.error("Ошибка очистки сессий", e);
+      showToast(`Ошибка: ${e.message}`);
     }
   }
 
-  async function deleteItem(index) {
-    if (!currentSessionId) return;
-    currentSessionData.lists.splice(index, 1);
+  // --- Работа с элементами в сессии ---
 
-    try {
-      const sessionDocRef = doc(db, "usersSessions", userId, "sessions", currentSessionId);
-      await updateDoc(sessionDocRef, { lists: currentSessionData.lists });
-      renderLists();
-    } catch (e) {
-      console.error('Ошибка удаления элемента', e);
-      tg.showAlert(`Ошибка: ${e.message}`);
-    }
-  }
+  async function renderLists() {
+    elements.listsContainer.innerHTML = "";
+    if (!currentSessionData || !currentSessionData.lists) return;
 
-  function renderLists() {
-    elements.listsContainer.innerHTML = '';
-    if (!currentSessionData?.lists?.length) {
-      elements.listsContainer.textContent = 'Список пуст';
-      return;
-    }
+    currentSessionData.lists.forEach((list, i) => {
+      const listDiv = document.createElement("div");
+      listDiv.className = "list-block";
 
-    currentSessionData.lists.forEach((item, idx) => {
-      const div = document.createElement('div');
-      div.className = 'list-item';
+      const title = document.createElement("h3");
+      title.textContent = list.name || "Без имени";
+      listDiv.appendChild(title);
 
-      const span = document.createElement('span');
-      span.textContent = item;
+      const ul = document.createElement("ul");
+      ul.style.listStyle = "none";
+      ul.style.paddingLeft = 0;
 
-      const btnDelete = document.createElement('button');
-      btnDelete.className = 'btn btn-secondary btn-small';
-      btnDelete.textContent = 'Удалить';
-      btnDelete.onclick = () => deleteItem(idx);
+      list.items.forEach((item, idx) => {
+        const li = document.createElement("li");
+        li.className = "list-item";
 
-      div.appendChild(span);
-      div.appendChild(btnDelete);
-      elements.listsContainer.appendChild(div);
+        const span = document.createElement("span");
+        span.textContent = item;
+        li.appendChild(span);
+
+        const btnDelete = document.createElement("button");
+        btnDelete.className = "btn btn-secondary btn-small";
+        btnDelete.textContent = "Удалить";
+        btnDelete.onclick = () => {
+          removeItemFromList(i, idx);
+        };
+        li.appendChild(btnDelete);
+
+        ul.appendChild(li);
+      });
+
+      listDiv.appendChild(ul);
+      elements.listsContainer.appendChild(listDiv);
     });
   }
 
-  // --- UI переходы ---
+  async function addItemToList() {
+    const val = elements.newItemInput.value.trim();
+    if (!val) {
+      showToast("Введите название элемента");
+      return;
+    }
+    if (!currentSessionData) {
+      showToast("Сначала откройте сессию");
+      return;
+    }
+
+    // По умолчанию добавляем в первый список, если нет списков — создаём
+    if (!currentSessionData.lists.length) {
+      currentSessionData.lists.push({ name: "Список 1", items: [] });
+    }
+
+    currentSessionData.lists[0].items.push(val);
+
+    await updateSessionData(currentSessionData);
+    elements.newItemInput.value = "";
+    renderLists();
+    showToast("Элемент добавлен");
+  }
+
+  async function removeItemFromList(listIndex, itemIndex) {
+    if (
+      !currentSessionData ||
+      !currentSessionData.lists[listIndex] ||
+      currentSessionData.lists[listIndex].items.length <= itemIndex
+    )
+      return;
+
+    currentSessionData.lists[listIndex].items.splice(itemIndex, 1);
+    await updateSessionData(currentSessionData);
+    renderLists();
+    showToast("Элемент удалён");
+  }
+
+  async function updateSessionData(data) {
+    if (!currentSessionId) return;
+    const sessionDocRef = doc(db, "usersSessions", userId, "sessions", currentSessionId);
+    try {
+      await updateDoc(sessionDocRef, { lists: data.lists });
+    } catch (e) {
+      console.error("Ошибка обновления сессии", e);
+      showToast(`Ошибка обновления: ${e.message}`);
+    }
+  }
+
+  // --- UI переключение ---
 
   function showMainMenu() {
     hideAllSections();
-    elements.mainMenu.classList.remove('hidden');
-    currentSessionId = null;
-    currentSessionData = null;
+    elements.mainMenu.classList.remove("hidden");
   }
 
   function showJoinSection() {
     hideAllSections();
-    elements.joinSection.classList.remove('hidden');
+    elements.joinSection.classList.remove("hidden");
+    elements.sessionIdInput.value = "";
   }
 
-  async function showSessionList() {
+  function showSessionList() {
     hideAllSections();
-    elements.sessionList.classList.remove('hidden');
-    await loadUserSessions();
+    elements.sessionList.classList.remove("hidden");
+    loadUserSessions();
   }
 
   function showSessionView() {
     hideAllSections();
-    elements.sessionView.classList.remove('hidden');
-    elements.currentSessionIdSpan.textContent = currentSessionId || '';
+    elements.sessionView.classList.remove("hidden");
+    elements.currentSessionIdSpan.textContent = currentSessionId;
     renderLists();
   }
+
+  // --- События ---
 
   elements.createBtn.onclick = createNewSession;
   elements.joinBtn.onclick = showJoinSection;
   elements.listBtn.onclick = showSessionList;
-  elements.joinSubmitBtn.onclick = () => joinExistingSession();
+
   elements.backBtn.onclick = showMainMenu;
   elements.listBackBtn.onclick = showMainMenu;
-  elements.sessionBackBtn.onclick = showMainMenu;
+  elements.sessionBackBtn.onclick = () => {
+    currentSessionId = null;
+    currentSessionData = null;
+    showMainMenu();
+  };
+
+  elements.joinSubmitBtn.onclick = () => joinExistingSession();
   elements.copyBtn.onclick = () => {
     if (!currentSessionId) return;
-    navigator.clipboard.writeText(currentSessionId);
-    //tg.showAlert('ID сессии скопирован!');
+    navigator.clipboard.writeText(currentSessionId).then(() => {
+      showToast("ID сессии скопирован");
+    });
   };
-  elements.addBtn.onclick = addNewItem;
 
-  // --- Инициализация ---
+  elements.addBtn.onclick = addItemToList;
+  elements.clearSessionsBtn.onclick = clearAllSessions;
 
-  (async function initialize() {showMainMenu();})();
+  // Показываем главное меню по умолчанию
+  showMainMenu();
 });

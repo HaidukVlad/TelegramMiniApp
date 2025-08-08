@@ -1,56 +1,100 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
-    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./css/style.css" />
     <title>Смотрим вместе</title>
 </head>
 <body>
     <div class="container">
         <h1 class="title">Смотрим вместе!</h1>
 
+        <!-- Главное меню -->
         <div id="main_menu" class="section">
-            <input type="text" id="session_name_input" class="input" placeholder="Название сессии (необязательно)">
-            <button id="create_btn" class="btn btn-primary">Создать комнату</button>
-            <button id="join_btn" class="btn btn-primary">Присоединиться</button>
-            <button id="list_btn" class="btn btn-primary">Список сессий</button>
+            <input
+                type="text"
+                id="session_name_input"
+                class="input"
+                placeholder="Название сессии (опционально)"
+            />
+            <button id="create_btn" class="btn btn-primary">
+                <span class="icon">➕</span> Создать комнату
+            </button>
+            <button id="join_btn" class="btn btn-primary">
+                <span class="icon">🔗</span> Присоединиться
+            </button>
+            <button id="list_btn" class="btn btn-primary">
+                <span class="icon">📋</span> Список сессий
+            </button>
         </div>
+
+        <!-- Присоединение к сессии -->
         <div id="join_session" class="section hidden">
-            <input type="text" id="session_id_input" class="input" placeholder="Введите ID сессии">
-            <button id="join_submit_btn" class="btn btn-primary">Присоединиться</button>
-            <button id="back_btn" class="btn btn-secondary">Назад</button>
+            <input
+                type="text"
+                id="session_id_input"
+                class="input"
+                placeholder="Введите ID сессии"
+            />
+            <button id="join_submit_btn" class="btn btn-primary">
+                <span class="icon">➡️</span> Присоединиться
+            </button>
+            <button id="back_btn" class="btn btn-secondary back-btn">← Назад</button>
         </div>
+
+        <!-- Список сессий -->
         <div id="session_list" class="section hidden">
-            <div id="sessions_container" class="lists-container"></div>
-            <button id="clear_sessions_btn" class="btn btn-secondary">Очистить все сессии</button>
-            <button id="list_back_btn" class="btn btn-secondary">Назад</button>
+            <div id="sessions_container" class="lists-container">Загрузка...</div>
+            <div class="buttons-row">
+                <button id="clear_sessions_btn" class="btn btn-secondary">
+                    🗑️ Очистить все сессии
+                </button>
+                <button id="list_back_btn" class="btn btn-secondary back-btn">← Назад</button>
+            </div>
         </div>
+
+        <!-- Просмотр сессии -->
         <div id="session_view" class="section hidden">
-            <button id="session_back_btn" class="btn btn-secondary back-btn">Назад</button>
+            <button id="session_back_btn" class="btn btn-secondary back-btn">← Назад</button>
+
             <div class="session-info">
                 <span>ID сессии: </span><span id="current_session_id" class="session-id"></span>
-                <button id="copy_btn" class="btn btn-secondary btn-small">Копировать</button>
+                <button id="copy_btn" class="btn btn-secondary btn-small" title="Копировать ID">
+                    📋 Копировать
+                </button>
             </div>
+
             <div id="lists_container" class="lists-container"></div>
+
             <div class="input-group">
-                <input type="text" id="new_item" class="input" placeholder="Добавить элемент">
-                <button id="add_btn" class="btn btn-primary">Добавить</button>
+                <input
+                    type="text"
+                    id="new_item"
+                    class="input"
+                    placeholder="Добавить элемент"
+                />
+                <button id="add_btn" class="btn btn-primary">
+                    <span class="icon">➕</span> Добавить
+                </button>
             </div>
         </div>
     </div>
 
+    <!-- Контейнер для toast-сообщений -->
+    <div id="toast_container" aria-live="polite" aria-atomic="true"></div>
+
     <script type="module" src="./js/index.js"></script>
     <script>
-    window.onerror = function (message, source, lineno, colno, error) {
-        document.body.innerHTML += `<div style="color:red;">
-            Ошибка: ${message}<br>
-            В файле: ${source}<br>
-            Строка: ${lineno}:${colno}<br>
-            Детали: ${error}
-        </div>`;
-    };
+        window.onerror = function (message, source, lineno, colno, error) {
+            document.body.innerHTML += `<div style="color:red; padding:10px; background:#fdd;">
+                Ошибка: ${message}<br>
+                В файле: ${source}<br>
+                Строка: ${lineno}:${colno}<br>
+                Детали: ${error}
+            </div>`;
+        };
     </script>
 </body>
 </html>

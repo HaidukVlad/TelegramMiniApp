@@ -13,7 +13,8 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, sans-serif;
     background: var(--bg-color);
     color: var(--text-color);
     line-height: 1.6;
@@ -30,6 +31,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    position: relative;
 }
 
 .title {
@@ -56,6 +58,10 @@ body {
 }
 
 .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 6px;
@@ -64,12 +70,17 @@ body {
     transition: background-color 0.2s;
 }
 
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .btn-primary {
     background: var(--primary-color);
     color: var(--tg-theme-button-text-color, #ffffff);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
     background: #0066cc;
 }
 
@@ -78,7 +89,7 @@ body {
     color: #ffffff;
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
     background: #5a6268;
 }
 
@@ -88,9 +99,10 @@ body {
 }
 
 .back-btn {
-    position: absolute;
+    position: fixed;
     top: 1rem;
-    right: 1rem;
+    left: 1rem;
+    z-index: 100;
 }
 
 .input {
@@ -106,6 +118,8 @@ body {
     display: flex;
     gap: 0.5rem;
     margin-top: 1rem;
+    width: 100%;
+    max-width: 400px;
 }
 
 .session-info {
@@ -114,6 +128,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .session-id {
@@ -130,30 +145,73 @@ body {
 
 .list-item {
     display: flex;
-    flex-direction: column;
-    padding: 0.75rem;
-    border-bottom: 1px solid #eee;
-    background: var(--bg-color);
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-    word-break: break-word;
-}
-
-.list-item .session-details {
-    display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-color);
+    border-radius: 6px;
     margin-bottom: 0.5rem;
-}
-
-.list-item .users-list {
-    font-size: 0.8rem;
-    color: var(--text-color);
-    opacity: 0.7;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    word-break: break-word;
 }
 
 .list-item span {
     flex-grow: 1;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.list-item button {
+    margin-left: 0.5rem;
+}
+
+.buttons-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 400px;
+}
+
+.icon {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+/* Toast контейнер */
+#toast_container {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    pointer-events: auto;
+    animation: fadeinout 3s forwards;
+}
+
+@keyframes fadeinout {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    10%,
+    90% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
 }
 
 @media (max-width: 480px) {
@@ -177,7 +235,7 @@ body {
 
     .back-btn {
         top: 0.5rem;
-        right: 0.5rem;
+        left: 0.5rem;
     }
 
     .input {
