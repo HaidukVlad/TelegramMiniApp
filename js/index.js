@@ -1,3 +1,17 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+    getFirestore,
+    collection,
+    doc,
+    setDoc,
+    getDoc,
+    updateDoc,
+    getDocs,
+    deleteDoc,
+    serverTimestamp,
+    arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
 document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
 
@@ -19,8 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
         appId: "1:748164363806:web:5c1b8dd08310c43fa4a00f",
         measurementId: "G-YNMECW3GX7"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
     let currentSessionId = null;
     let lists = [];
@@ -51,15 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
         clearSessionsBtn: document.getElementById('clear_sessions_btn')
     };
 
-    // Проверка наличия всех элементов
+    // Проверка наличия элементов
     const missingElements = Object.keys(elements).filter(key => !elements[key]);
     if (missingElements.length > 0) {
         console.error('Отсутствуют элементы DOM:', missingElements);
-        alert('Ошибка: некоторые элементы интерфейса не найдены. Проверьте HTML.');
+        alert('Ошибка: некоторые элементы интерфейса не найдены.');
         return;
     }
 
-    // Скрыть все секции при загрузке
+    // Скрыть все секции
     elements.mainMenu.classList.add('hidden');
     elements.joinSection.classList.add('hidden');
     elements.sessionList.classList.add('hidden');
@@ -69,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.createBtn.addEventListener('click', createNewSession);
     elements.joinBtn.addEventListener('click', showJoinSection);
     elements.listBtn.addEventListener('click', showSessionList);
-    elements.joinSubmitBtn.addEventListener('click', joinExistingSession);
+    elements.joinSubmitBtn.addEventListener('click', () => joinExistingSession());
     elements.backBtn.addEventListener('click', showMainMenu);
     elements.listBackBtn.addEventListener('click', showMainMenu);
     elements.sessionBackBtn.addEventListener('click', showMainMenu);
@@ -104,14 +119,18 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.createBtn.disabled = true;
         elements.createBtn.textContent = 'Создание...';
         try {
-            const sessionId = btoa(String(Math.random())).slice(0, 8); // Простой генератор ID
-            const username = tg.initDataUnsafe.user?.username ? `@${tg.initDataUnsafe.user.username}` : `@user${tg.initDataUnsafe.user?.id || 'unknown'}`;
-            await db.collection('sessions').doc(sessionId).set({
+            const sessionId = btoa(String(Math.random())).slice(0, 8);
+            const username = tg.initDataUnsafe.user?.username
+                ? `@${tg.initDataUnsafe.user.username}`
+                : `@user${tg.initDataUnsafe.user?.id || 'unknown'}`;
+
+            await setDoc(doc(db, "sessions", sessionId), {
                 name: sessionName,
                 lists: [],
                 users: [username],
-                created_at: firebase.firestore.FieldValue.serverTimestamp()
+                created_at: serverTimestamp()
             });
+
             currentSessionId = sessionId;
             lists = [];
             localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
@@ -136,14 +155,18 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.joinSubmitBtn.disabled = true;
         elements.joinSubmitBtn.textContent = 'Присоединение...';
         try {
-            const doc = await db.collection('sessions').doc(sessionId).get();
-            if (doc.exists) {
-                const username = tg.initDataUnsafe.user?.username ? `@${tg.initDataUnsafe.user.username}` : `@user${tg.initDataUnsafe.user?.id || 'unknown'}`;
-                await db.collection('sessions').doc(sessionId).update({
-                    users: firebase.firestore.FieldValue.arrayUnion(username)
+            const docSnap = await getDoc(doc(db, "sessions", sessionId));
+            if (docSnap.exists()) {
+                const username = tg.initDataUnsafe.user?.username
+                    ? `@${tg.initDataUnsafe.user.username}`
+                    : `@user${tg.initDataUnsafe.user?.id || 'unknown'}`;
+
+                await updateDoc(doc(db, "sessions", sessionId), {
+                    users: arrayUnion(username)
                 });
+
                 currentSessionId = sessionId;
-                lists = doc.data().lists || [];
+                lists = docSnap.data().lists || [];
                 localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
                 setupSessionView();
                 renderLists();
@@ -184,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.addBtn.textContent = 'Добавление...';
         try {
             lists.push(item);
-            await db.collection('sessions').doc(currentSessionId).update({
+            await updateDoc(doc(db, "sessions", currentSessionId), {
                 lists: lists
             });
             elements.newItemInput.value = '';
@@ -201,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteItem(index) {
         try {
             lists.splice(index, 1);
-            await db.collection('sessions').doc(currentSessionId).update({
+            await updateDoc(doc(db, "sessions", currentSessionId), {
                 lists: lists
             });
             renderLists();
@@ -213,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteSession(sessionId) {
         try {
-            await db.collection('sessions').doc(sessionId).delete();
+            await deleteDoc(doc(db, "sessions", sessionId));
             if (currentSessionId === sessionId) {
                 localStorage.removeItem(SESSION_STORAGE_KEY);
                 currentSessionId = null;
@@ -228,12 +251,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function clearSessions() {
         try {
-            const snapshot = await db.collection('sessions').get();
-            const batch = db.batch();
-            snapshot.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
+            const snapshot = await getDocs(collection(db, "sessions"));
+            const deletePromises = [];
+            snapshot.forEach(d => deletePromises.push(deleteDoc(d.ref)));
+            await Promise.all(deletePromises);
             localStorage.removeItem(SESSION_STORAGE_KEY);
             currentSessionId = null;
             renderSessions();
@@ -244,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function renderLists() {
+    function renderLists() {
         elements.listsContainer.innerHTML = '';
         lists.forEach((item, index) => {
             const itemEl = document.createElement('div');
@@ -267,10 +288,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function renderSessions() {
         elements.sessionsContainer.innerHTML = '';
         try {
-            const snapshot = await db.collection('sessions').get();
-            snapshot.forEach(doc => {
-                const sessionId = doc.id;
-                const data = doc.data();
+            const snapshot = await getDocs(collection(db, "sessions"));
+            snapshot.forEach(d => {
+                const sessionId = d.id;
+                const data = d.data();
                 const sessionEl = document.createElement('div');
                 sessionEl.className = 'list-item';
 
