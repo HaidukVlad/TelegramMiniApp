@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       showSessionView();
       renderLists();
-      await renderSessions();
+      await loadUserSessions();
 
       tg.showAlert(`Сессия создана: ${sessionId}`);
     } catch (e) {
