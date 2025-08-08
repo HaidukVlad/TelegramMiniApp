@@ -51,6 +51,7 @@ elements.addBtn.addEventListener('click', addNewItem);
 
 function showMainMenu() {
     elements.mainMenu.classList.remove('hidden');
+    elements.mainMenu.classList.add('flex');
     elements.joinSection.classList.add('hidden');
     elements.sessionList.classList.add('hidden');
     elements.sessionView.classList.add('hidden');
@@ -59,6 +60,7 @@ function showMainMenu() {
 function showJoinSection() {
     elements.mainMenu.classList.add('hidden');
     elements.joinSection.classList.remove('hidden');
+    elements.joinSection.classList.add('flex');
     elements.sessionList.classList.add('hidden');
     elements.sessionView.classList.add('hidden');
 }
@@ -67,6 +69,7 @@ function showSessionList() {
     elements.mainMenu.classList.add('hidden');
     elements.joinSection.classList.add('hidden');
     elements.sessionList.classList.remove('hidden');
+    elements.sessionList.classList.add('flex');
     elements.sessionView.classList.add('hidden');
     renderSessions();
 }
@@ -265,6 +268,7 @@ function initialize() {
         joinExistingSession(tg.initDataUnsafe.start_param);
     } else {
         elements.mainMenu.classList.remove('hidden');
+        elements.mainMenu.classList.add('flex')
     }
 }
 

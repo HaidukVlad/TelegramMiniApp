@@ -38,11 +38,6 @@ body {
 }
 
 .section {
-    all: unset;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: space-evenly; !important;
     margin: 1.5rem 0;
     padding: 1rem;
     border-radius: 8px;
@@ -140,6 +135,13 @@ body {
 
 .hidden {
     display: none;
+}
+
+.flex {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: space-evenly; !important;
 }
 
 @media (max-width: 480px) {
